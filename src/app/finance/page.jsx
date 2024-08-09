@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Button,
   TextField,
@@ -16,24 +16,11 @@ import {
 } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import Chart from "chart.js/auto";
-import "chartjs-adapter-date-fns"; // Import the date adapter
-
-const companyNameToSymbol = {
-  Apple: "AAPL",
-  Microsoft: "MSFT",
-  Amazon: "AMZN",
-  Google: "GOOGL",
-  Alphabet: "GOOG",
-  Tesla: "TSLA",
-  Facebook: "META",
-  IBM: "IBM",
-  Nvidia: "NVDA",
-  SAP: "SAP",
-  // Weitere Unternehmen hinzufügen
-};
+import "chartjs-adapter-date-fns";
 
 export default function HomePage() {
   const [input, setInput] = useState("");
+  const [symbol, setSymbol] = useState("");
   const [profileData, setProfileData] = useState(null);
   const [quoteData, setQuoteData] = useState(null);
   const [historyData, setHistoryData] = useState(null);
@@ -41,25 +28,52 @@ export default function HomePage() {
   const [recommendationData, setRecommendationData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [newsLimit, setNewsLimit] = useState(3); // State to control the number of news articles displayed
+  const [newsLimit, setNewsLimit] = useState(3);
   const theme = useTheme();
+
+  const fetchSymbol = async (companyName) => {
+    try {
+      const response = await fetch(
+        `/api/stock/symbol?companyName=${companyName}`
+      );
+      const data = await response.json();
+      if (response.ok) {
+        return data.symbol;
+      }
+      throw new Error(data.error || "No symbol found");
+    } catch (error) {
+      console.error("Error fetching symbol:", error);
+      setError("Failed to fetch stock symbol. Please try again.");
+      return null;
+    }
+  };
 
   const handleSearch = async () => {
     setError(null);
     setLoading(true);
-    const symbol = companyNameToSymbol[input] || input.toUpperCase(); // Try to get the symbol, fallback to input as symbol
 
     try {
+      const fetchedSymbol = await fetchSymbol(input);
+      if (!fetchedSymbol) {
+        throw new Error("Could not retrieve stock symbol");
+      }
+
+      setSymbol(fetchedSymbol);
+
       const profileResponse = await fetch(
-        `/api/stock/profile?symbol=${symbol}`
+        `/api/stock/profile?symbol=${fetchedSymbol}`
       );
-      const quoteResponse = await fetch(`/api/stock/quote?symbol=${symbol}`);
+      const quoteResponse = await fetch(
+        `/api/stock/quote?symbol=${fetchedSymbol}`
+      );
       const historyResponse = await fetch(
-        `/api/stock/history?symbol=${symbol}`
+        `/api/stock/history?symbol=${fetchedSymbol}`
       );
-      const newsResponse = await fetch(`/api/stock/news?symbol=${symbol}`);
+      const newsResponse = await fetch(
+        `/api/stock/news?symbol=${fetchedSymbol}`
+      );
       const recommendationResponse = await fetch(
-        `/api/stock/recommendation?symbol=${symbol}`
+        `/api/stock/recommendation?symbol=${fetchedSymbol}`
       );
 
       if (
@@ -108,7 +122,7 @@ export default function HomePage() {
   };
 
   const handleLoadMoreNews = () => {
-    setNewsLimit((prevLimit) => prevLimit + 3); // Increase the limit by 3
+    setNewsLimit((prevLimit) => prevLimit + 3);
   };
 
   const chartData = historyData
@@ -127,7 +141,7 @@ export default function HomePage() {
     : null;
 
   const chartOptions = {
-    animation: false, // Disable animation
+    animation: false,
     responsive: true,
     maintainAspectRatio: false,
     scales: {
@@ -173,7 +187,7 @@ export default function HomePage() {
 
       <Box display="flex" justifyContent="center" mb={4}>
         <TextField
-          label="Enter Stock Symbol"
+          label="Enter Company Name or Stock Symbol"
           variant="outlined"
           value={input}
           onChange={(e) => setInput(e.target.value)}
